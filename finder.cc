@@ -68,7 +68,14 @@ void finder::handlePostRequest(const http_request& req) {
         std::vector<std::thread> threads;
         for (size_t i = 0; i < directories.size(); ++i) {
           fs::path dir(directories[i].as_string());
-          threads.emplace_back(searchfile, dir, extensions[i].as_string());
+          if(fs::exists(dir) && fs::is_directory(dir))
+            threads.emplace_back(searchfile, dir, extensions[i].as_string());
+          else {
+              web::json::value response;
+              response["message"] = json::value::string("Directory "+dir.string()+" not found");
+              std::cout<<"Directory " << dir.string()<<" not found" <<std::endl;
+              continue;
+          }
         }
 
         for (auto& thread : threads) thread.join();
@@ -108,3 +115,4 @@ void finder::handlePostRequest(const http_request& req) {
     }
   });
 }
+

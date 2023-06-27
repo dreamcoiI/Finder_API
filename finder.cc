@@ -66,13 +66,13 @@ void finder::handlePostRequest(const http_request& req) {
         auto start = std::chrono::high_resolution_clock::now();
 
         std::vector<std::thread> threads;
+        std::vector<std::string> wrong_dir;
         for (size_t i = 0; i < directories.size(); ++i) {
           fs::path dir(directories[i].as_string());
           if(fs::exists(dir) && fs::is_directory(dir))
             threads.emplace_back(searchfile, dir, extensions[i].as_string());
           else {
-              web::json::value response;
-              response["message"] = json::value::string("Directory "+dir.string()+" not found");
+              wrong_dir.push_back(dir);
               std::cout<<"Directory " << dir.string()<<" not found" <<std::endl;
               continue;
           }
@@ -90,7 +90,11 @@ void finder::handlePostRequest(const http_request& req) {
 
         for (const auto& name : fileNames)
           response["fileNames"][index++] = web::json::value::string(name);
-
+        if (!wrong_dir.empty()) {
+            int ind = 0;
+            for(const auto& name: wrong_dir)
+                response["directory not found"][ind++] = web::json::value::string(name);
+        }
         response["count"] = json::value::number(count);
         response["time"] = json::value::number(time.count());
         response["count threads"] = json::value::number(threadsCount);

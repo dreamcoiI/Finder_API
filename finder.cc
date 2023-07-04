@@ -26,6 +26,7 @@ void finder::searchfile(const fs::path& directory, const std::string& extension)
     if (fs::is_regular_file(entry) && entry.path().extension() == extension &&
         fs::exists(entry)) {
       localNames.push_back(entry.path().string());
+      lastModify.push_back(fs::last_write_time(entry));
       count.fetch_add(1, std::memory_order_relaxed);
     }
   }
@@ -88,8 +89,19 @@ void finder::handlePostRequest(const http_request& req) {
         int index = 0;
         std::cout << "pls write you response." << std::endl;
 
-        for (const auto& name : fileNames)
-          response["fileNames"][index++] = web::json::value::string(name);
+        for (const auto& name : fileNames) {
+          response["fileNames"][index]["fileName"] = web::json::value::string(name);
+          time_t timeUpdate = std::chrono::system_clock::to_time_t(lastModify[index]);
+          std::tm* localTime = std::localtime(&timeUpdate);
+          char buffer[80];
+          std::strftime(buffer,sizeof(buffer),"%d-%m-%Y %H:%M:%S",localTime);
+          std::uintmax_t fileSize = fs::file_size(name);
+          std::string formattedSize = formatFileSize(fileSize);
+          response["fileNames"][index]["lastModify"] = web::json::value::string(buffer);
+          response["fileNames"][index]["fileSize"] = web::json::value::string(formattedSize);
+//          response["fileNames"][index]["lastModify"] = web::json::value::number(static_cast<long long>(lastModify[index].time_since_epoch().count()));
+          ++index;
+        }
         if (!wrong_dir.empty()) {
             int ind = 0;
             for(const auto& name: wrong_dir)
@@ -118,5 +130,18 @@ void finder::handlePostRequest(const http_request& req) {
       req.reply(status_codes::InternalError, response);
     }
   });
+}
+
+std::string finder::formatFileSize(std::uintmax_t sizeInBytes) {
+  static const std::string suffixes[] = {"B", "KB", "MB", "GB", "TB"};
+  std::uintmax_t index = 0;
+  auto size = static_cast<double>(sizeInBytes);
+
+  while(size >= 1024 && index < sizeof(suffixes)/ sizeof(suffixes[0]) - 1 ) {
+    size /= 1024;
+    ++index;
+  }
+
+  return std::to_string(size) + " " + suffixes[index];
 }
 

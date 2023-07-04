@@ -18,9 +18,11 @@ namespace finder {
     namespace fs = std::experimental::filesystem;
     void searchfile(const fs::path &directory, const std::string &extension);
     void handlePostRequest(const http_request &req);
+    std::string formatFileSize(std::uintmax_t sizeInBytes);
     std::atomic<int> count(0);
     std::vector<std::string> fileNames;
     std::atomic<int> threadsCount(0);
+    std::vector<std::experimental::filesystem::file_time_type> lastModify;
 };
 
 #endif //FINDER_API_FINDER_H

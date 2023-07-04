@@ -20,7 +20,8 @@ int main() {
       .wait();
 }
 
-void finder::searchfile(const fs::path& directory, const std::string& extension) {
+void finder::searchfile(const fs::path& directory,
+                        const std::string& extension) {
   std::vector<std::string> localNames;
   for (const auto& entry : fs::recursive_directory_iterator(directory)) {
     if (fs::is_regular_file(entry) && entry.path().extension() == extension &&
@@ -70,12 +71,13 @@ void finder::handlePostRequest(const http_request& req) {
         std::vector<std::string> wrong_dir;
         for (size_t i = 0; i < directories.size(); ++i) {
           fs::path dir(directories[i].as_string());
-          if(fs::exists(dir) && fs::is_directory(dir))
+          if (fs::exists(dir) && fs::is_directory(dir))
             threads.emplace_back(searchfile, dir, extensions[i].as_string());
           else {
-              wrong_dir.push_back(dir);
-              std::cout<<"Directory " << dir.string()<<" not found" <<std::endl;
-              continue;
+            wrong_dir.push_back(dir);
+            std::cout << "Directory " << dir.string() << " not found"
+                      << std::endl;
+            continue;
           }
         }
 
@@ -90,22 +92,26 @@ void finder::handlePostRequest(const http_request& req) {
         std::cout << "pls write you response." << std::endl;
 
         for (const auto& name : fileNames) {
-          response["fileNames"][index]["fileName"] = web::json::value::string(name);
-          time_t timeUpdate = std::chrono::system_clock::to_time_t(lastModify[index]);
+          response["fileNames"][index]["fileName"] =
+              web::json::value::string(name);
+          time_t timeUpdate =
+              std::chrono::system_clock::to_time_t(lastModify[index]);
           std::tm* localTime = std::localtime(&timeUpdate);
           char buffer[80];
-          std::strftime(buffer,sizeof(buffer),"%d-%m-%Y %H:%M:%S",localTime);
+          std::strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", localTime);
           std::uintmax_t fileSize = fs::file_size(name);
           std::string formattedSize = formatFileSize(fileSize);
-          response["fileNames"][index]["lastModify"] = web::json::value::string(buffer);
-          response["fileNames"][index]["fileSize"] = web::json::value::string(formattedSize);
-//          response["fileNames"][index]["lastModify"] = web::json::value::number(static_cast<long long>(lastModify[index].time_since_epoch().count()));
+          response["fileNames"][index]["lastModify"] =
+              web::json::value::string(buffer);
+          response["fileNames"][index]["fileSize"] =
+              web::json::value::string(formattedSize);
           ++index;
         }
         if (!wrong_dir.empty()) {
-            int ind = 0;
-            for(const auto& name: wrong_dir)
-                response["directory not found"][ind++] = web::json::value::string(name);
+          int ind = 0;
+          for (const auto& name : wrong_dir)
+            response["directory not found"][ind++] =
+                web::json::value::string(name);
         }
         response["count"] = json::value::number(count);
         response["time"] = json::value::number(time.count());
@@ -137,11 +143,10 @@ std::string finder::formatFileSize(std::uintmax_t sizeInBytes) {
   std::uintmax_t index = 0;
   auto size = static_cast<double>(sizeInBytes);
 
-  while(size >= 1024 && index < sizeof(suffixes)/ sizeof(suffixes[0]) - 1 ) {
+  while (size >= 1024 && index < sizeof(suffixes) / sizeof(suffixes[0]) - 1) {
     size /= 1024;
     ++index;
   }
 
   return std::to_string(size) + " " + suffixes[index];
 }
-
